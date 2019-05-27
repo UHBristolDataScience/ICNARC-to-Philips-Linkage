@@ -5,6 +5,9 @@ The function parse_icnarc_xml() reads the standard xml file output by WardWatche
 converts the CODE names to human-readable description using the CMP description file,
 and then returns the data as a Pandas dataframe.
 
+The data are currently all stored as strings, 
+except for 'ICNARC number' and 'Unit ID' which are integers.
+
 Note: This dataframe is wide. Each column is a variable in the CMP dataset. 
 	So there are potentially 205 columns. But only those variables present in the xml 
 	file are included. 
@@ -67,9 +70,9 @@ def convert_unit_numbers(data):
 	B16 -> 14 (CICU)
 	'''
 	data['Unit ID'] = [1 if i=='H91' else 14 for i in data['ICNARC CMP Number']]
-	data = data.rename(index=str, columns={'ICNARC Number':'ICNARC number'}) ## purely semantic change of colum name for linkage to WW
+	data['ICNARC number'] = [int(i) for i in data['ICNARC Number']]
 
-	return data
+	return data.drop(columns=['ICNARC Number'])
 
 if __name__=="__main__":
 
