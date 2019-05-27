@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Function for parsing ICNARC xml file.
+"""Code for parsing ICNARC xml file.
 
-This function parse_icnarc_xml() reads the standard xml file output by WardWatcher,
+The function parse_icnarc_xml() reads the standard xml file output by WardWatcher,
 converts the CODE names to human-readable description using the CMP description file,
 and then returns the data as a Pandas dataframe.
 
@@ -57,8 +57,19 @@ def parse_icnarc_xml(xml_filename, cmp_filename, verbose=True):
 		if code in codes_in_use:
 			description = row['Description']
 			data[description] = [_xml[patient][code] if code in _xml[patient].keys() else np.nan for patient in _xml.keys()]
-	return data
 
+	return convert_unit_numbers(data)
+
+def convert_unit_numbers(data):
+	''' Maps the ICNARC CMP Number column to an integer that matches the 'Unit ID' from WW:
+
+	H91 -> 1 (GICU)
+	B16 -> 14 (CICU)
+	'''
+	data['Unit ID'] = [1 if i=='H91' else 14 for i in data['ICNARC CMP Number']]
+	data = data.rename(index=str, columns={'ICNARC Number':'ICNARC number'}) ## purely semantic change of colum name for linkage to WW
+
+	return data
 
 if __name__=="__main__":
 
