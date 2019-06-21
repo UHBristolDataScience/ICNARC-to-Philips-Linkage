@@ -53,13 +53,13 @@ def clean_icnarc_cis_ids(icnarc_cis_id_file, erroneous_ids, verbose=True):
 		df_summary(icnarc_numbers, verbose=True)
 	return icnarc_numbers
 
-def clean_philips_encounterids(philips_extract, encounter_id_issues, verbose=True, log_error_type=False):
+def clean_philips_encounterids(philips_extract, encounter_id_issues, verbose=True, log_error_type=False, date_columns=['inTime','outTime']):
 	''' Cleans the encounterIds in a Philips extraction.
 
 	encounterIds to replace are recorded in sheet 'encounterId' of 'Philips encounterId Issue List (New).xlsx'
 	'''
-	data = pd.read_csv(philips_extract, delimiter='\t', parse_dates=['inTime','outTime'])
-	data = data.rename(index=str, columns={'encounterId':'encounterId_original'})	
+	data = pd.read_csv(philips_extract, delimiter='\t', parse_dates=date_columns)
+	data = data.rename(index=str, columns={'encounterId':'encounterId_CIS'})	
 	if verbose:	
 		print("\nDataframe containing encounter summaries from Philips:")
 		df_summary(data)
@@ -67,22 +67,21 @@ def clean_philips_encounterids(philips_extract, encounter_id_issues, verbose=Tru
 
 	known_errors = pd.read_excel(encounter_id_issues, sheet_name='encounterId')
 	known_errors = known_errors[known_errors.clinicalUnitId!=8.0]  ## remove rows specific to cardiac
-	error_type = dict(zip(known_errors['encounterId_CIS'],known_errors['Explanation']))
-	known_errors = known_errors.dropna(subset={'encounterId_Adjusted'})  ## retain only issues where old Id is matched to a correct Id	
+	data = data.merge(known_errors, how='left', on='encounterId_CIS')
 
 	if verbose:
 		print("\nDataframe containing known enounterId issues in Philip ICCA data:")	
 		df_summary(known_errors, verbose=False)
 		
-	replacements = dict(zip(known_errors['encounterId_CIS'],known_errors['encounterId_Adjusted']))
-	
-	data['encounterId'] = [replacements[row['encounterId_original']] if row['encounterId_original'] in replacements.keys() 
-				else row['encounterId_original'] for i,row in data.iterrows()]
-	
+	data = data.rename(index=str, columns={'encounterId_CIS':'encounterId_original'})
+	data['encounterId_Adjusted'] = data['encounterId_Adjusted'].fillna(data['encounterId_original'])
 	if log_error_type:
-		data['error_type'] = [error_type[row['encounterId_original']] if row['encounterId_original'] in error_type.keys() 
-				else "NA" for i,row in data.iterrows()]
-	
+		data['error_type'] = data['Explanation'].fillna('NA')
+
+	data = data.drop(['clinicalUnitId', 'Explanation'], axis=1)
+	data = data.rename(index=str, columns={'encounterId_Adjusted':'encounterId'})
+	data['encounterId'] = data['encounterId'].astype(int)
+
 	return data
 
 def join_icnarc_to_philips(philips_data, icnarc_numbers, verbose=True):
