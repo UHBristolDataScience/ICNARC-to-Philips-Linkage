@@ -8,7 +8,7 @@ have been identified by Josh Inoue (UHB).
 The causes or error are described in 'Philips encounterId Read Me.txt'
 and the erroneous/duplicate Ids are tracked in 'Philips encounterId Issue List (New).xlsx'
 
-Issues with the WW CIS Patient ID fewer and are currently adjusted manually in this script. 
+Issues with the WW CIS Patient ID are fewer and are currently adjusted manually in this script. 
 In the future they will be logged and autmoatically corrected.
 """
 
@@ -53,7 +53,7 @@ def clean_icnarc_cis_ids(icnarc_cis_id_file, erroneous_ids, verbose=True):
 		df_summary(icnarc_numbers, verbose=True)
 	return icnarc_numbers
 
-def clean_philips_encounterids(philips_extract, encounter_id_issues, verbose=True):
+def clean_philips_encounterids(philips_extract, encounter_id_issues, verbose=True, log_error_type=False):
 	''' Cleans the encounterIds in a Philips extraction.
 
 	encounterIds to replace are recorded in sheet 'encounterId' of 'Philips encounterId Issue List (New).xlsx'
@@ -67,21 +67,22 @@ def clean_philips_encounterids(philips_extract, encounter_id_issues, verbose=Tru
 
 	known_errors = pd.read_excel(encounter_id_issues, sheet_name='encounterId')
 	known_errors = known_errors[known_errors.clinicalUnitId!=8.0]  ## remove rows specific to cardiac
+	error_type = dict(zip(known_errors['encounterId_CIS'],known_errors['Explanation']))
 	known_errors = known_errors.dropna(subset={'encounterId_Adjusted'})  ## retain only issues where old Id is matched to a correct Id	
+
 	if verbose:
 		print("\nDataframe containing known enounterId issues in Philip ICCA data:")	
 		df_summary(known_errors, verbose=False)
 		
 	replacements = dict(zip(known_errors['encounterId_CIS'],known_errors['encounterId_Adjusted']))
-	new_encounterId = []
-
-	for index, row in data.iterrows():
-		if row['encounterId_original'] in replacements.keys():
-			new_encounterId.append(replacements[row['encounterId_original']])
-		else:
-			new_encounterId.append(row['encounterId_original'])
-
-	data['encounterId'] = new_encounterId  
+	
+	data['encounterId'] = [replacements[row['encounterId_original']] if row['encounterId_original'] in replacements.keys() 
+				else row['encounterId_original'] for i,row in data.iterrows()]
+	
+	if log_error_type:
+		data['error_type'] = [error_type[row['encounterId_original']] if row['encounterId_original'] in error_type.keys() 
+				else "NA" for i,row in data.iterrows()]
+	
 	return data
 
 def join_icnarc_to_philips(philips_data, icnarc_numbers, verbose=True):
