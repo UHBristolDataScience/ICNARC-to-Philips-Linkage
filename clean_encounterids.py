@@ -87,8 +87,8 @@ def clean_philips_encounterids(philips_extract, encounter_id_issues, verbose=Tru
 def join_icnarc_to_philips(philips_data, icnarc_numbers, verbose=True):
 	''' Simple merge of Philips extract to ICNARC, joining on cleaned encounterId columns.'''
 
-	philips_data['CIS Patient ID'] = philips_data['encounterId']
-	merged_data = philips_data.merge(icnarc_numbers, on='CIS Patient ID').drop(['encounterId', 'Key'], axis=1)
+	icnarc_numbers['encounterId'] = icnarc_numbers['CIS Patient ID'] 
+	merged_data = philips_data.merge(icnarc_numbers, on='encounterId').drop(['CIS Patient ID', 'Key'], axis=1)
 	if verbose:
 		print("\nDataframe containing Philip data joined to ICNARC Id data:")
 		df_summary(merged_data)
@@ -120,8 +120,46 @@ def validation(icnarc_numbers, philips_data, merged_data, view_non_unique_ids=Fa
 
 	print(merged_data.columns)
 
-def combine_non_unique_encounters(merged_data, combine='concat', verbose=True):
+def _get_err(x):
+	err = x[x!='NA']
+	if len(err)==0:
+		return 'NA'
+	else:
+		return err.values[0]
+
+def combine_non_unique_philips_encounters(merged_data, combine='concat', verbose=True):
 	''' Combining data from ITU stays with multiple encounterIds in Philips.'''
+
+	if combine=='concat':
+		groups = merged_data.groupby(['encounterId'], as_index=False).agg({'ptCensusId': ['count', list],
+										'age': 'min',
+										'inTime':'min',
+										'outTime':'max',
+										'tNumber':'first',
+										'encounterId_original':['count', list],
+										'lengthOfStay (mins)':'sum',
+										'gender':'last',
+										'error_type': _get_err})
+		groups.columns = list(map('_'.join, groups.columns.values)) ## remove multi-index
+	elif combine=='simple':
+		groups = merged_data.groupby(['encounterId'], as_index=False).agg({'ptCensusId': 'first',
+										'age': 'min',
+										'inTime':'min',
+										'outTime':'max',
+										'tNumber':'first',
+										'encounterId_original':'first',
+										'lengthOfStay (mins)':'sum',
+										'gender':'first',
+										'error_type': _get_err})
+
+	if verbose:
+		print('\n', groups.columns)
+		print(groups.iloc[:, groups.columns.get_level_values(0).isin({'CIS Patient ID', 'age', 'lengthOfStay (mins)', ''})].head())
+
+	return groups
+
+def combine_non_unique_encounters(merged_data, combine='concat', verbose=True):
+	''' Combining data from ITU stays with multiple encounterIds in Philips after joining to ICNARC extraction.'''
 
 	if combine=='concat':
 		groups = merged_data.groupby(['CIS Patient ID'], as_index=False).agg({'ptCensusId': ['count', list],
