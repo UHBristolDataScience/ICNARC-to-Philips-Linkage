@@ -11,13 +11,12 @@ and the erroneous/duplicate Ids are tracked in 'Philips encounterId Issue List (
 Issues with the WW CIS Patient ID are fewer and are currently adjusted manually in this script. 
 In the future they will be logged and autmoatically corrected.
 """
+import pandas as pd
+import numpy as np
 
 ## Note: the 'c engine' is more robust for pandas.read_csv() but it does not allow 
 ## 	 'skip_footer', so the footer (final five lines) must be deleted manually
 ##	 from the file 'encounter_summary.rpt'
-import pandas as pd
-import numpy as np
-
 def df_summary(df, verbose=True):
 	""" Print a summary of a dataframe.
 
