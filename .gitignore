@@ -2,5 +2,6 @@ old
 *.png
 *.csv
 *.pyc
+*.pdf
 .ipynb*
 fixing_encounterId_issues.py
