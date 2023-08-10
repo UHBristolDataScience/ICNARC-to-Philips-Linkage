@@ -17,6 +17,9 @@
 -- Tables beginning 'D_' are definition tables and define certain concepts (e.g. D_Intervetions).
 -- The substantive patient data about these concepts are stored in fact tables (e.g. PtAssessment). 
 
+-- Set database
+USE CISReportingDB
+
 -- Table types can be viewed like this:
 SELECT * FROM dbo.M_TableType
 
